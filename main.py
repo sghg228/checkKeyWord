@@ -4,7 +4,7 @@ from openpyxl import load_workbook
 import time
 import socket
 from striprtf.striprtf import rtf_to_text
-
+##
 
 def check_keywords_in_text(text, keywords):
     found_keywords = [keyword for keyword in keywords if keyword in text]
