@@ -9,7 +9,7 @@ from striprtf.striprtf import rtf_to_text
 def check_keywords_in_text(text, keywords):
     found_keywords = [keyword for keyword in keywords if keyword in text]
     return found_keywords
-
+#
 
 def check_keywords_in_docx(file_path, keywords):
     content = docx2txt.process(file_path)
