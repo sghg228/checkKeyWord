@@ -13,7 +13,7 @@ from striprtf.striprtf import rtf_to_text
 start_time = time.time()
 
 def check_keywords_in_text(text, keywords):
-    found_keywords = [keyword for keyword in keywords if keyword in text]
+    found_keywords = [keyword for keyword in keywords if keyword.lower() in text.lower()]
     return found_keywords
 
 
@@ -29,8 +29,24 @@ def check_keywords_in_docx(file_path, keywords):
     return check_keywords_in_text(content, keywords)
 
 
+
+def detection_encoding(file_path, found_keywords):
+    try:
+        detector = UniversalDetector()
+        with open(file_path, 'r') as fh:
+            for line in fh:
+                detector.feed(line)
+                if detector.done:
+                    break
+            detector.close()
+
+    except Exception as e4:
+        print(f'Ошибка: {e4} {file_path} {detector.result["encoding"]}')
+    return detector.result["encoding"]
+
 def check_keywords_in_rtf(file_path, keywords):
     text = ''
+    found_keywords = None
     try:
         with open(file_path) as infile:
             content = infile.read()
@@ -46,20 +62,10 @@ def check_keywords_in_rtf(file_path, keywords):
                     content = infile.read()
                     text = rtf_to_text(content)
             except Exception as e3:
-                try:
-                    detector = UniversalDetector()
-                    with open(file_path, 'r') as fh:
-                        for line in fh:
-                            detector.feed(line)
-                            if detector.done:
-                                break
-                        detector.close()
-                    found_keywords = check_keywords_in_text(open(file_path, 'r', encoding=str(detector.result["encoding"]), errors="ignore").read(), keywords)
-                except Exception as e4:
-                    print(f'Ошибка: {e4} {file_path} {detector.result["encoding"]}')
-                #print(f'Ошибка: {e3} {file_path}')
+                found_keywords = check_keywords_in_text(open(file_path, 'r', encoding=str(detection_encoding()), errors="ignore").read(), keywords)
+                print(f'Ошибка: {e3} {file_path}')
 
-    return check_keywords_in_text(text, keywords)
+    return found_keywords
 
 
 def check_keywords_in_xlsx(file_path: str, keywords: list) -> str:
@@ -102,9 +108,6 @@ def check_keyword_in_txt(file_path, keywords):
                 except Exception as e4:
                     print(f'Ошибка: {e3} {file_path} {detector.result["encoding"]}')
                     k = 1
-
-
-
 
     return found_keywords
 
@@ -153,7 +156,7 @@ if __name__ == "__main__":
     # Путь к папке, которую нужно проверить
     folder_path = 'D:\\'
     # Список ключевых слов для поиска
-    keywords = ['steam']
+    keywords = ['TEST A']
 
     log = search_files_in_folder(folder_path, keywords)
 
