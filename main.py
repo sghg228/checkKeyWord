@@ -1,15 +1,14 @@
 
 import os
-import threading
-import traceback
+
 from chardet.universaldetector import UniversalDetector
-
-
+import getpass
 import docx2txt
 from openpyxl import load_workbook
 import time
 import socket
 from striprtf.striprtf import rtf_to_text
+
 start_time = time.time()
 
 def check_keywords_in_text(text, keywords):
@@ -17,20 +16,17 @@ def check_keywords_in_text(text, keywords):
     return found_keywords
 
 
-#
-
 def check_keywords_in_docx(file_path, keywords):
     content = ''
     try:
         content = docx2txt.process(file_path)
     except Exception as e:
         k = 1
-      #  print(str('Ошибка:\n' + str(traceback.format_exc()) + ' ' + str(file_path) + ' КОД ' + str(e)))
+        print(f'Ошибка: {e} {file_path}')
     return check_keywords_in_text(content, keywords)
 
 
-
-def detection_encoding(file_path, found_keywords):
+def detection_encoding(file_path):
     try:
         detector = UniversalDetector()
         with open(file_path, 'r') as fh:
@@ -42,7 +38,12 @@ def detection_encoding(file_path, found_keywords):
 
     except Exception as e4:
         print(f'Ошибка: {e4} {file_path} {detector.result["encoding"]}')
+
+    if(detector.result["encoding"] == None ):
+        return "utf-8"
+    print(detector.result["encoding"])
     return detector.result["encoding"]
+
 
 def check_keywords_in_rtf(file_path, keywords):
     text = ''
@@ -62,7 +63,7 @@ def check_keywords_in_rtf(file_path, keywords):
                     content = infile.read()
                     text = rtf_to_text(content)
             except Exception as e3:
-                found_keywords = check_keywords_in_text(open(file_path, 'r', encoding=str(detection_encoding()), errors="ignore").read(), keywords)
+                found_keywords = check_keywords_in_text(open(file_path, 'r', encoding=str(detection_encoding(file_path)), errors="ignore").read(), keywords)
                 print(f'Ошибка: {e3} {file_path}')
 
     return found_keywords
@@ -104,7 +105,7 @@ def check_keyword_in_txt(file_path, keywords):
                             if detector.done:
                                 break
                         detector.close()
-                    found_keywords = check_keywords_in_text(open(file_path, 'r', errors="ignore", encoding=str(detector.result["encoding"])).read(), keywords)
+                    found_keywords = check_keywords_in_text(open(file_path, 'r', errors="ignore", encoding=str(detector.result["encoding"])).read())
                 except Exception as e4:
                     print(f'Ошибка: {e3} {file_path} {detector.result["encoding"]}')
                     k = 1
@@ -129,45 +130,40 @@ def extension_processing(file_path, keywords):
 
 def search_files_in_folder(folder_path, keywords):
     name = os.environ['USERNAME']
-    log = []
+    log = [name]
     for root, dirs, files in os.walk(folder_path):
         for file_name in files:
 
             file_path = os.path.join(root, file_name)
-            if file_path.endswith(('.zip', '.rar', '.tarz')):
+            if file_path.endswith(('.zip', '.rar', '.7z')):
                 continue
             else:
                 found_keywords = extension_processing(file_path, keywords)
             if found_keywords:
                 add_log(name, file_path, found_keywords, log)
-
-
-
     return log
 
+
 def add_log(name, file_path, found_keywords, log):
-   log.append(f'{file_path}{", ".join(found_keywords)}')
-
-
-
-
+   log.append(f'{file_path} {found_keywords}')
 
 if __name__ == "__main__":
     # Путь к папке, которую нужно проверить
     folder_path = 'D:\\'
     # Список ключевых слов для поиска
-    keywords = ['TEST A']
+    keywords = ['TEST A', 'TEST B', 'test c', "sghg"]
 
     log = search_files_in_folder(folder_path, keywords)
 
     print([str(x) + ' ' for x in log])
-
 
 end_time = time.time()
 # Рассчитайте разницу, чтобы узнать время выполнения
 execution_time = end_time - start_time
 print(str(execution_time))
 
+with open("D:\\projects\\4year\\Pract\\checkKeyWord\\dist\\out.txt", "w") as file:
+    for one_log in log:
+        file.write(one_log+"\n")
 
-
-######## интерфейс, регистр, фоновый режим , формат лога, сокеты, автозапуск
+######## сокеты
