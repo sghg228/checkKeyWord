@@ -8,15 +8,36 @@ from openpyxl import load_workbook
 import time
 import socket
 from striprtf.striprtf import rtf_to_text
+from docx import Document
+import socket
+import json
+
+
 
 start_time = time.time()
 
 def check_keywords_in_text(text, keywords):
+    """""
+    Функция check_keywords_in_text(text,keywords)
+    Принимает аргументы text: Текст в котором происходит поиск.
+                    keywords  - Список ключевых слов, которые 
+                                мы проверяем на наличие
+                    
+    Что делает: Приводит текст к нижнему регистру, проверяет есть ли 
+                в тексте ключевые слова из массива keywords. 
+                    
+    Возвращаемое значение: Возвращает массив ключевых слов, которые найдены в тексте. 
+    """""
     found_keywords = [keyword for keyword in keywords if keyword.lower() in text.lower()]
+
     return found_keywords
 
 
+
 def check_keywords_in_docx(file_path, keywords):
+    """""
+        функция считывает  
+    """""
     content = ''
     try:
         content = docx2txt.process(file_path)
@@ -26,7 +47,16 @@ def check_keywords_in_docx(file_path, keywords):
     return check_keywords_in_text(content, keywords)
 
 
+
 def detection_encoding(file_path):
+    """"
+        Детектор кодировки. Не всегда работает((
+        
+        Принимает аргументы: file_path - путь для файла, кодировку 
+                             которого мы хотим узнать
+        Возвращает: Строку, значение которой является кодировка, если 
+                    таковую удалось обнаружить
+    """""
     try:
         detector = UniversalDetector()
         with open(file_path, 'r') as fh:
@@ -39,13 +69,31 @@ def detection_encoding(file_path):
     except Exception as e4:
         print(f'Ошибка: {e4} {file_path} {detector.result["encoding"]}')
 
+    #Отсекает пустое значение, заменяя его кодировкой utf - 8
     if(detector.result["encoding"] == None ):
         return "utf-8"
-    print(detector.result["encoding"])
+
+    #print(detector.result["encoding"])
     return detector.result["encoding"]
 
 
+
 def check_keywords_in_rtf(file_path, keywords):
+    """""
+        Функция, которая проверяет наличие ключевого слова в .rtf файле.
+        
+        Принимает аргументы: file_path - Путь до файла, который проверяем 
+                             keywords  - Список ключевых слов, которые мы проверяем
+                             на наличие.
+        
+        Что делает: Пытается считать файл по очереди различными кодировками.
+                    В один момент доходит до детектора кодировки. 
+                    Причём символы, кодировку которой установить не удалось, 
+                    заменяются на ? знаки, что позволяет считать текст почти любой кодировкой.
+                    Примечание: исходный текст никак не изменяется.       
+                    
+        Что возвращает: Список найденных ключевых слов.                           
+    """""
     text = ''
     found_keywords = None
     try:
@@ -69,7 +117,18 @@ def check_keywords_in_rtf(file_path, keywords):
     return found_keywords
 
 
+
 def check_keywords_in_xlsx(file_path: str, keywords: list) -> str:
+    """""
+        Функция, которая проверяет наличие в файле ключевого слова
+        
+        Принимает аргументы: file_path - путь до файла, который проверяем.
+                             keywords  - Список ключевых слов, наличие которых мы проверяем.
+                             
+        Что делает: Преобразует к тексту и посылает этот текст функции, которая работает в тексте.
+                    
+        Возвращает: Список найденных ключевых слов.                                 
+    """""
     content = []
     try:
         workbook = load_workbook(file_path)
@@ -84,7 +143,11 @@ def check_keywords_in_xlsx(file_path: str, keywords: list) -> str:
     return check_keywords_in_text('\n'.join(content), keywords)
 
 
+
 def check_keyword_in_txt(file_path, keywords):
+    """""
+        Функция, которая проверяет в файле 
+    """""
     found_keywords = None
     try:
         found_keywords = check_keywords_in_text(open(file_path, 'r').read(), keywords)
@@ -107,13 +170,23 @@ def check_keyword_in_txt(file_path, keywords):
                         detector.close()
                     found_keywords = check_keywords_in_text(open(file_path, 'r', errors="ignore", encoding=str(detector.result["encoding"])).read())
                 except Exception as e4:
-                    print(f'Ошибка: {e3} {file_path} {detector.result["encoding"]}')
+                    #print(f'Ошибка: {e3} {file_path} {detector.result["encoding"]}')
                     k = 1
 
     return found_keywords
 
 
+
 def extension_processing(file_path, keywords):
+    """
+        Принимаемые аргументы: file - Путь до файла
+                               Массив ключевых слов, которые нужно проверить в файле.
+
+        Что делает: В зависимости от типа файла вызывает соответствующие обработчики.
+                    Которые возвращают список найденных в файлах ключевых слов.
+
+        Функция возвращает: список найденных в файле ключевых слов
+    """
     found_keywords = None
     if file_path.endswith(('.txt', '.docx', '.doc', '.rtf', 'xls', 'xlsx')):
         if file_path.endswith('.txt'):
@@ -128,7 +201,20 @@ def extension_processing(file_path, keywords):
     return found_keywords
 
 
+
 def search_files_in_folder(folder_path, keywords):
+    """""
+        Принимает аргументы: folder_path - изначальный путь, с которого начинается обход
+                                keywords - массив ключевых слов, наличие которых мы хотим найти.
+                                
+        Что делает: Проходится по каждым папкам кроме архивов. Для каждого найденого файла вызывает 
+                    функцию extension_processing и передаёт ей массив ключевых слов и путь до файла,
+                    который программа пытается открыть. Если в файле были обнаружены ключевые слова,
+                    то в логи записывается путь до файла и какое ключевое слово обнаружено.
+                    
+        Возвращает: Лог- то есть массив записей, первой записью которого будет имя пользователя.                                   
+    """""
+
     name = os.environ['USERNAME']
     log = [name]
     for root, dirs, files in os.walk(folder_path):
@@ -144,18 +230,35 @@ def search_files_in_folder(folder_path, keywords):
     return log
 
 
+
 def add_log(name, file_path, found_keywords, log):
-   log.append(f'{file_path} {found_keywords}')
+    """""
+        Добавляет в log новую запись, содержашую путь до файла и ключевое слово   
+    """""
+    log.append(f'{file_path} {found_keywords}')
+
+
+def start_client(log_final):
+    host = '127.0.0.1'
+    port = 12345
+
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((host, port))
+
+    json_data = json.dumps(log_final)
+    client_socket.send(json_data.encode('utf-8'))
+
+    #receive_file(client_socket, file_name)
+
 
 if __name__ == "__main__":
     # Путь к папке, которую нужно проверить
     folder_path = 'D:\\'
     # Список ключевых слов для поиска
-    keywords = ['TEST A', 'TEST B', 'test c', "sghg"]
-
+    keywords = ['TEST A', 'TEST B', 'Лицензия', "sghg"]
     log = search_files_in_folder(folder_path, keywords)
-
     print([str(x) + ' ' for x in log])
+    start_client(log)
 
 end_time = time.time()
 # Рассчитайте разницу, чтобы узнать время выполнения
